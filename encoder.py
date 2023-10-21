@@ -69,34 +69,41 @@ class Encoder:
         new_image.save("cover-secret.png")
 
 
+    def encode_file(self, source_path:str, destination_path:str):
 
-    def encode_file(self, path:str):
-        with open(path, "rb") as f:
+        self.load_image(destination_path)
+        with open(source_path, "rb") as f:
             data = f.read()
-            data_size = len(data) * 8
 
+            # check if message is too long
             encoding_capacity = self.height * self.width * 3
-            if data_size > encoding_capacity:
+            message_bits_len = sys.getsizeof(data) * 8
+            if message_bits_len > encoding_capacity:
                 raise ValueError("Message is too long to encode")
 
+            header = self.create_header(len(data), source_path, 1)
+
+            header_bits_array = [int(bit) for byte in header for bit in format(byte, '08b')]  # convert header to bits
             text_bits_array = [int(bit) for byte in data for bit in format(byte, '08b')]
-            # for byte in data:
-            #     binary_byte = f'{byte:08b}'
+            # convert message to bits
+            bits_to_write = header_bits_array + text_bits_array
+
+
 
             pixel_data = list(self.img.getdata())
             new_image = Image.new(self.img.mode, self.img.size)
             current_text_bit = 0
             self.text_bits_array_len = len(text_bits_array)
 
-            for i in range(self.height):
+            pixel_count = self.height * self.width
+            for i in range(pixel_count):
                 pixel = list(pixel_data[i])
                 for k in range(3):
                     try:
-                        x = text_bits_array[current_text_bit]
+                        x = bits_to_write[current_text_bit]
                         current_text_bit += 1
 
                     except IndexError:
-                        completed = True
                         break
                     pixel[k] = self.modify_bit(pixel[k], x)
                     pixel_data[i] = tuple(pixel)

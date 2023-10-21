@@ -78,27 +78,44 @@ class Decoder:
     def decode_file(self, path: str):
         # Get the image pixel arrays
         result_message = ""
-        self.path = path
-        self.load_image()
+        size_of_header =+32+64*8+8
+
+        self.load_image(path) # image with secret message
         pixel_data = list(self.img.getdata())
-        text_bits_array = []
+        gained_bits_array = []
         counter = 0
 
-        for i in range(self.height):
+        pixel_count = self.height * self.width
+        for i in range(pixel_count):
             pixel = list(pixel_data[i])
             for k in range(3):
                 try:
-                    if counter == self.text_bits_array_len:
-                        break
-                    tmp = pixel[k] & 1
-                    text_bits_array.append(tmp)
+                    tmp = pixel[k] & 0x01
+                    gained_bits_array.append(tmp)
                     counter += 1
                 except:
                     completed = True
                     break
 
-        bit_string = ''.join(map(lambda x: chr(48 + x), text_bits_array))
+        num_of_bits, filename, type_of_info = self.decode_header(size_of_header, gained_bits_array)
+
+        # get message bits
+        bits_with_message = gained_bits_array[size_of_header:size_of_header + num_of_bits * 8]
+        # decode message
+        decoded_string = self.bits_array_to_string(bits_with_message)
+
+        #bit_string = ''.join(map(lambda x: chr(48 + x), bits_with_message))
         decoded_string = ""
-        bit_groups = [bit_string[i:i + 8] for i in range(0, len(bit_string), 8)]
-        with open("test_result.txt", "wb") as f:
-            f.write(bit_groups)
+        tmp_bit_arr = []
+        bytes_arr = []
+        for bit in bits_with_message:
+            tmp_bit_arr.append(str(bit))
+            if len(tmp_bit_arr) == 8:
+                temp_bytes_int = int("".join(tmp_bit_arr), 2)
+                bytes_arr.append(temp_bytes_int.to_bytes(1, 'big'))
+                tmp_bit_arr.clear()
+        bytes_data = b''.join(bytes_arr)
+        with open("test_result2.pdf", "wb") as f:
+
+
+                f.write(bytes_data)
